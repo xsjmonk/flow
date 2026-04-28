@@ -183,3 +183,6 @@ site/
 *.sqlite
 *.sqlite3
 *.db
+
+
+*.pyc
