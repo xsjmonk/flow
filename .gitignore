@@ -1,0 +1,185 @@
+# =========================
+# Python bytecode / caches
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+share/python-wheels/
+var/
+wheels/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+MANIFEST
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# Conda
+# =========================
+.conda/
+conda-meta/
+*.conda
+*.tar.bz2
+
+# =========================
+# Test / coverage / typing
+# =========================
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache/
+htmlcov/
+coverage.xml
+nosetests.xml
+*.cover
+*.py,cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+ruff_cache/
+.ruff_cache/
+
+# =========================
+# Jupyter / Notebook
+# =========================
+.ipynb_checkpoints/
+.jupyter/
+profile_default/
+nbconvert/
+*.nb.html
+
+# =========================
+# Logs / runtime
+# =========================
+*.log
+logs/
+*.pid
+*.seed
+*.out
+*.err
+
+# =========================
+# IDE - VS Code
+# =========================
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+!.vscode/launch.json.example
+!.vscode/tasks.json.example
+
+# =========================
+# IDE - PyCharm / IntelliJ
+# =========================
+.idea/
+*.iml
+
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Local secrets / config
+# =========================
+.env
+.env.*
+*.secret
+secrets.json
+local.settings.json
+
+# =========================
+# Data / artifacts
+# (keep if generated locally)
+# =========================
+data/
+artifacts/
+outputs/
+tmp/
+temp/
+
+# =========================
+# Package managers
+# =========================
+poetry.lock
+Pipfile.lock
+
+# Remove above lines if you WANT lockfiles committed
+# Usually commit for apps, optional for libraries.
+
+# =========================
+# ML / model artifacts
+# =========================
+*.h5
+*.hdf5
+*.onnx
+*.pt
+*.pth
+*.ckpt
+mlruns/
+wandb/
+
+# =========================
+# Docs builds
+# =========================
+docs/_build/
+site/
+
+# =========================
+# Spyder / Rope
+# =========================
+.spyderproject
+.spyproject
+.ropeproject
+
+# =========================
+# PyInstaller
+# =========================
+*.manifest
+*.spec
+
+# =========================
+# Local databases
+# =========================
+*.sqlite
+*.sqlite3
+*.db
