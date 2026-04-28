@@ -1,0 +1,25 @@
+name: flow
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - jupyterlab
+  - sympy
+  - seaborn
+  - plotly
+  - openpyxl
+  - tabulate
+  - ipykernel
+  - pytest
+  - black
+  - numba
+  - statsmodels
+  - pint
+  - pip
+  - sqlite
