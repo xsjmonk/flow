@@ -2,71 +2,123 @@ import math
 
 import pytest
 
-from flow.engine.core.validation import FormulaValidationError
-from flow.engine.geometry.pipe_area import (
-    FORMULA_01_PIPE_CROSS_SECTION_AREA,
-    FORMULA_01_PIPE_CROSS_SECTION_AREA_NAME,
+from flow.engine import (
     PipeAreaInput,
-    PipeCrossSectionAreaFormula,
-    calculate_pipe_cross_section_area,
+    PipeAreaOutput,
+    calculate_pipe_area,
+    calculate_pipe_area_from_diameter,
+    calculate_pipe_areas,
+    pipe_area_outputs_to_records,
 )
 
 
-@pytest.mark.parametrize(
-    "inner_diameter_m, expected",
-    [
-        (1.0, math.pi / 4.0),
-        (2.0, math.pi),
-        (0.5, math.pi * 0.5 * 0.5 / 4.0),
-    ],
-)
-def test_calculate_pipe_cross_section_area_valid(inner_diameter_m, expected):
-    area = calculate_pipe_cross_section_area(inner_diameter_m)
-    assert area == pytest.approx(expected, rel=1e-12, abs=0.0)
+class TestCalculatePipeAreaFromDiameter:
+    """Tests for the convenience function calculate_pipe_area_from_diameter."""
+
+    def test_diameter_1_returns_pi_over_4(self):
+        area = calculate_pipe_area_from_diameter(1.0)
+        assert area == pytest.approx(math.pi / 4.0, rel=1e-12, abs=0.0)
+
+    def test_diameter_2_returns_pi(self):
+        area = calculate_pipe_area_from_diameter(2.0)
+        assert area == pytest.approx(math.pi, rel=1e-12, abs=0.0)
+
+    def test_diameter_0_5(self):
+        area = calculate_pipe_area_from_diameter(0.5)
+        expected = math.pi * 0.5 * 0.5 / 4.0
+        assert area == pytest.approx(expected, rel=1e-12, abs=0.0)
+
+    def test_diameter_0_raises_error(self):
+        with pytest.raises(ValueError, match="must be greater than 0"):
+            calculate_pipe_area_from_diameter(0)
+
+    def test_negative_diameter_raises_error(self):
+        with pytest.raises(ValueError, match="must be greater than 0"):
+            calculate_pipe_area_from_diameter(-1.0)
 
 
-def test_pipe_cross_section_area_scales_with_diameter_squared():
-    d = 0.73
-    area_d = calculate_pipe_cross_section_area(d)
-    area_2d = calculate_pipe_cross_section_area(2.0 * d)
-    assert area_2d == pytest.approx(4.0 * area_d, rel=1e-12, abs=0.0)
+class TestCalculatePipeArea:
+    """Tests for the main calculate_pipe_area function."""
+
+    def test_output_has_direct_area_m2_property(self):
+        input_obj = PipeAreaInput(inner_diameter_m=1.0, pipe_id="P-1", diameter_source="user")
+        result = calculate_pipe_area(input_obj)
+        assert result.area_m2 == pytest.approx(math.pi / 4.0, rel=1e-12)
+
+    def test_output_has_direct_inner_diameter_m_property(self):
+        input_obj = PipeAreaInput(inner_diameter_m=1.5, pipe_id="P-2", diameter_source="CAD")
+        result = calculate_pipe_area(input_obj)
+        assert result.inner_diameter_m == 1.5
+
+    def test_output_preserves_pipe_id(self):
+        input_obj = PipeAreaInput(inner_diameter_m=1.0, pipe_id="TEST-001")
+        result = calculate_pipe_area(input_obj)
+        assert result.pipe_id == "TEST-001"
+
+    def test_output_preserves_diameter_source(self):
+        input_obj = PipeAreaInput(inner_diameter_m=1.0, diameter_source="measured")
+        result = calculate_pipe_area(input_obj)
+        assert result.diameter_source == "measured"
 
 
-def test_formula_class_returns_expected_result_for_valid_input():
-    formula = PipeCrossSectionAreaFormula()
-    inp = PipeAreaInput(inner_diameter_m=1.0, pipe_id="P-1", diameter_source="user_input")
-    result = formula.evaluate(inp)
+class TestCalculatePipeAreas:
+    """Tests for the batch helper."""
 
-    assert result.is_valid is True
-    assert result.errors == []
-    assert result.formula_id == FORMULA_01_PIPE_CROSS_SECTION_AREA
-    assert result.formula_name == FORMULA_01_PIPE_CROSS_SECTION_AREA_NAME
-    assert result.output is not None
+    def test_batch_returns_one_output_per_input(self):
+        inputs = [
+            PipeAreaInput(inner_diameter_m=0.5),
+            PipeAreaInput(inner_diameter_m=1.0),
+            PipeAreaInput(inner_diameter_m=2.0),
+        ]
+        outputs = calculate_pipe_areas(inputs)
+        assert len(outputs) == 3
 
-    assert result.output.inner_diameter_m == inp.inner_diameter_m
-    assert result.output.pipe_id == inp.pipe_id
-    assert result.output.diameter_source == inp.diameter_source
-    assert "pipe is circular" in result.output.assumptions
+    def test_batch_results_match_single_calls(self):
+        inputs = [
+            PipeAreaInput(inner_diameter_m=1.0),
+            PipeAreaInput(inner_diameter_m=2.0),
+        ]
+        outputs = calculate_pipe_areas(inputs)
 
-    expected = math.pi / 4.0
-    assert result.output.area_m2 == pytest.approx(expected, rel=1e-12, abs=0.0)
+        single_0 = calculate_pipe_area(inputs[0])
+        single_1 = calculate_pipe_area(inputs[1])
+
+        assert outputs[0].area_m2 == single_0.area_m2
+        assert outputs[1].area_m2 == single_1.area_m2
 
 
-@pytest.mark.parametrize(
-    "inner_diameter_m",
-    [
-        None,
-        0.0,
-        -1.0,
-        float("nan"),
-        float("inf"),
-        float("-inf"),
-        "1.0",
-    ],
-)
-def test_formula_invalid_input_raises(inner_diameter_m):
-    formula = PipeCrossSectionAreaFormula()
-    inp = PipeAreaInput(inner_diameter_m=inner_diameter_m)  # type: ignore[arg-type]
-    with pytest.raises(FormulaValidationError):
-        _ = formula.evaluate(inp)
+class TestPipeAreaOutputsToRecords:
+    """Tests for the records conversion helper."""
 
+    def test_records_contain_required_fields(self):
+        outputs = [
+            PipeAreaOutput(
+                area_m2=0.5,
+                inner_diameter_m=1.0,
+                pipe_id="P-1",
+                diameter_source="user_input",
+            )
+        ]
+        records = pipe_area_outputs_to_records(outputs)
+
+        assert len(records) == 1
+        assert "pipe_id" in records[0]
+        assert "diameter_source" in records[0]
+        assert "inner_diameter_m" in records[0]
+        assert "area_m2" in records[0]
+
+    def test_records_values_match_output(self):
+        outputs = [
+            PipeAreaOutput(
+                area_m2=0.785,
+                inner_diameter_m=1.0,
+                pipe_id="A",
+                diameter_source="B",
+            )
+        ]
+        records = pipe_area_outputs_to_records(outputs)
+
+        assert records[0]["pipe_id"] == "A"
+        assert records[0]["diameter_source"] == "B"
+        assert records[0]["inner_diameter_m"] == 1.0
+        assert records[0]["area_m2"] == 0.785

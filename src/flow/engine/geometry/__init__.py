@@ -1,4 +1,0 @@
-"""
-Geometry formulas and models.
-"""
-

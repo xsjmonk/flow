@@ -17,25 +17,34 @@ $extensions = @("*.py", "*.ipynb")
 Write-Host "Copying source files from: $repoRoot"
 Write-Host "To target folder: $targetDir"
 
-$copiedFolders = @{}
-$copiedFiles = @()
-
+$allFiles = @()
 foreach ($ext in $extensions) {
     $files = Get-ChildItem -LiteralPath $repoRoot -Recurse -Include $ext -File -ErrorAction SilentlyContinue
-    foreach ($file in $files) {
-        $relativePath = $file.FullName.Substring($repoRoot.Length).TrimStart('\', '/')
-        $targetPath = Join-Path $targetDir $relativePath
-        $targetFolder = Split-Path -Parent $targetPath
+    $allFiles += $files
+}
 
-        if (-not (Test-Path -LiteralPath $targetFolder)) {
-            New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
-            $copiedFolders[$targetFolder] = $true
-        }
+$totalFiles = $allFiles.Count
+Write-Host "Found $totalFiles files to copy."
 
-        Copy-Item -LiteralPath $file.FullName -Destination $targetPath -Force
-        Write-Host "  Copied: $relativePath"
-        $copiedFiles += $relativePath
+$copiedFolders = @{}
+$copiedFiles = @()
+$copiedCount = 0
+
+foreach ($file in $allFiles) {
+    $relativePath = $file.FullName.Substring($repoRoot.Length).TrimStart('\', '/')
+    $targetPath = Join-Path $targetDir $relativePath
+    $targetFolder = Split-Path -Parent $targetPath
+
+    if (-not (Test-Path -LiteralPath $targetFolder)) {
+        New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
+        $copiedFolders[$targetFolder] = $true
     }
+
+    Copy-Item -LiteralPath $file.FullName -Destination $targetPath -Force
+    $copiedCount++
+    $percent = [math]::Round(($copiedCount / $totalFiles) * 100)
+    Write-Host "  [$copiedCount/$totalFiles] Copied: $relativePath" -ForegroundColor Green
+    $copiedFiles += $relativePath
 }
 
 if ($copiedFiles.Count -eq 0) {
@@ -45,16 +54,35 @@ if ($copiedFiles.Count -eq 0) {
 
 Write-Host "Packaging $($copiedFiles.Count) files into flow.zip..."
 
-$archivePaths = @()
+$topLevelFolders = @{}
 foreach ($relativePath in $copiedFiles) {
-    $targetPath = Join-Path $targetDir $relativePath
-    $archivePaths += $targetPath
+    $firstFolder = ($relativePath -split '[\\/]')[0]
+    if ($firstFolder -and -not $topLevelFolders.ContainsKey($firstFolder)) {
+        $topLevelFolders[$firstFolder] = Join-Path $targetDir $firstFolder
+    }
 }
 
-Compress-Archive -Path $archivePaths -DestinationPath $zipFile -Force
+$folderCount = $topLevelFolders.Count
+$currentFolder = 0
+
+if ($topLevelFolders.Count -gt 0) {
+    foreach ($folder in $topLevelFolders.Values) {
+        $currentFolder++
+        $percent = [math]::Round(($currentFolder / $folderCount) * 100)
+        Write-Host "  Packaging folder [$currentFolder/$folderCount]: $folder" -ForegroundColor Cyan
+    }
+    $archivePaths = $topLevelFolders.Values
+    Compress-Archive -Path $archivePaths -DestinationPath $zipFile -Force
+}
+else {
+    Compress-Archive -Path "$targetDir\*" -DestinationPath $zipFile -Force
+}
+
+Write-Host "Packaging complete." -ForegroundColor Green
 
 Write-Host "Cleaning up intermediate files..."
 
+$cleanupCount = 0
 foreach ($relativePath in $copiedFiles) {
     $targetPath = Join-Path $targetDir $relativePath
     if (Test-Path -LiteralPath $targetPath) {
@@ -65,6 +93,8 @@ foreach ($relativePath in $copiedFiles) {
             Remove-Item -LiteralPath $folder -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+    $cleanupCount++
+    Write-Host "  [$cleanupCount/$($copiedFiles.Count)] Removed: $relativePath" -ForegroundColor Yellow
 }
 
 Write-Host "Done. Created: $zipFile"
