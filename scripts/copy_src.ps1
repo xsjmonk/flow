@@ -12,6 +12,35 @@ if (Test-Path -LiteralPath $zipFile) {
     Remove-Item -LiteralPath $zipFile -Force
 }
 
+# Define required root files
+$requiredRootFiles = @(
+    "environment.yml",
+    "pyproject.toml",
+    "README.md"
+)
+
+# Copy required root files
+foreach ($file in $requiredRootFiles) {
+    $sourcePath = Join-Path $repoRoot $file
+    if (-not (Test-Path -LiteralPath $sourcePath)) {
+        throw "Required root file not found: $sourcePath"
+    }
+    Copy-Item -LiteralPath $sourcePath -Destination $targetDir -Force
+    Write-Host "  Copied root file: $file" -ForegroundColor Green
+}
+
+# Copy the script itself
+$scriptSource = Join-Path $scriptDir "copy_src.ps1"
+if (Test-Path -LiteralPath $scriptSource) {
+    $scriptsTargetDir = Join-Path $targetDir "scripts"
+    if (-not (Test-Path -LiteralPath $scriptsTargetDir)) {
+        New-Item -ItemType Directory -Path $scriptsTargetDir -Force | Out-Null
+    }
+    Copy-Item -LiteralPath $scriptSource -Destination $scriptsTargetDir -Force
+    Write-Host "  Copied script: scripts/copy_src.ps1" -ForegroundColor Green
+}
+
+# Copy source files (py, ipynb)
 $extensions = @("*.py", "*.ipynb")
 
 Write-Host "Copying source files from: $repoRoot"
@@ -42,17 +71,16 @@ foreach ($file in $allFiles) {
 
     Copy-Item -LiteralPath $file.FullName -Destination $targetPath -Force
     $copiedCount++
-    $percent = [math]::Round(($copiedCount / $totalFiles) * 100)
     Write-Host "  [$copiedCount/$totalFiles] Copied: $relativePath" -ForegroundColor Green
     $copiedFiles += $relativePath
 }
 
-if ($copiedFiles.Count -eq 0) {
-    Write-Host "No source files found to copy."
+if ($copiedFiles.Count -eq 0 -and $requiredRootFiles.Count -eq 0) {
+    Write-Host "No files found to copy."
     return
 }
 
-Write-Host "Packaging $($copiedFiles.Count) files into flow.zip..."
+Write-Host "Packaging files into flow.zip..."
 
 $topLevelFolders = @{}
 foreach ($relativePath in $copiedFiles) {
@@ -62,21 +90,11 @@ foreach ($relativePath in $copiedFiles) {
     }
 }
 
-$folderCount = $topLevelFolders.Count
-$currentFolder = 0
+$archivePaths = @()
+$archivePaths += $requiredRootFiles | ForEach-Object { Join-Path $targetDir $_ }
+$archivePaths += $topLevelFolders.Values
 
-if ($topLevelFolders.Count -gt 0) {
-    foreach ($folder in $topLevelFolders.Values) {
-        $currentFolder++
-        $percent = [math]::Round(($currentFolder / $folderCount) * 100)
-        Write-Host "  Packaging folder [$currentFolder/$folderCount]: $folder" -ForegroundColor Cyan
-    }
-    $archivePaths = $topLevelFolders.Values
-    Compress-Archive -Path $archivePaths -DestinationPath $zipFile -Force
-}
-else {
-    Compress-Archive -Path "$targetDir\*" -DestinationPath $zipFile -Force
-}
+Compress-Archive -Path $archivePaths -DestinationPath $zipFile -Force
 
 Write-Host "Packaging complete." -ForegroundColor Green
 
@@ -95,6 +113,22 @@ foreach ($relativePath in $copiedFiles) {
     }
     $cleanupCount++
     Write-Host "  [$cleanupCount/$($copiedFiles.Count)] Removed: $relativePath" -ForegroundColor Yellow
+}
+
+# Clean up copied root files
+foreach ($file in $requiredRootFiles) {
+    $targetPath = Join-Path $targetDir $file
+    if (Test-Path -LiteralPath $targetPath) {
+        Remove-Item -LiteralPath $targetPath -Force
+        Write-Host "  Removed root file: $file" -ForegroundColor Yellow
+    }
+}
+
+# Clean up scripts folder
+$scriptsTargetDir = Join-Path $targetDir "scripts"
+if (Test-Path -LiteralPath $scriptsTargetDir) {
+    Remove-Item -LiteralPath $scriptsTargetDir -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  Removed scripts folder" -ForegroundColor Yellow
 }
 
 Write-Host "Done. Created: $zipFile"

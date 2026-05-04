@@ -122,3 +122,20 @@ class TestPipeAreaOutputsToRecords:
         assert records[0]["diameter_source"] == "B"
         assert records[0]["inner_diameter_m"] == 1.0
         assert records[0]["area_m2"] == 0.785
+
+
+class TestFormulaMetadata:
+    """Tests for formula metadata."""
+
+    def test_formula_id_is_specific(self):
+        from flow.engine import FORMULA_ID
+        assert FORMULA_ID == "FORMULA_01_PIPE_CROSS_SECTION_AREA"
+
+    def test_formula_name_exists(self):
+        from flow.engine import FORMULA_NAME
+        assert FORMULA_NAME == "Pipe Cross-Section Area"
+
+    def test_formula_equation_exists(self):
+        from flow.engine import FORMULA_EQUATION
+        assert "pi" in FORMULA_EQUATION.lower()
+        assert "inner_diameter" in FORMULA_EQUATION.lower()

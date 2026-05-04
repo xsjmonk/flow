@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass
 
 
-FORMULA_ID = "FORMULA_01"
+FORMULA_ID = "FORMULA_01_PIPE_CROSS_SECTION_AREA"
 FORMULA_NAME = "Pipe Cross-Section Area"
 FORMULA_EQUATION = "Area = pi * inner_diameter_m^2 / 4"
 
